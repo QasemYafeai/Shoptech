@@ -39,7 +39,7 @@ export default async function ProductDetailPage({
   const product = await getProductById(params.id);
 
   if (!product) {
-    notFound(); // 404 if product not found
+    notFound(); 
   }
 
   // Pass product data to the client component

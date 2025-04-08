@@ -9,16 +9,16 @@ const orderRoutes = require('./routes/orderRoutes');
 const app = express();
 const PORT = 3001;
 
-// Middleware
+// Middleware: Enable CORS and parse JSON requests
 app.use(cors());
 app.use(express.json());
 
-// Connect to database
+// Connect to the database
 (async () => {
   await connectToDB();
 })();
 
-// Use routes
+// Define API routes
 app.use('/api/products', productRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/auth', authRoutes);

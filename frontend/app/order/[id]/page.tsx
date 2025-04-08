@@ -7,7 +7,7 @@ import { useAuth } from '@/app/AuthContext';
 import { useToast } from '@/app/components/Toast';
 import Navbar from '@/app/components/Navbar';
 
-// Order interface
+// Order interfaces
 interface OrderItem {
   product: string;
   name: string;
@@ -41,7 +41,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -51,7 +51,6 @@ export default function OrderDetailPage() {
   useEffect(() => {
     const fetchOrderDetails = async () => {
       if (authLoading) return;
-      
       if (!isAuthenticated) {
         router.push('/login?redirect=' + encodeURIComponent(`/order/${orderId}`));
         return;
@@ -59,16 +58,13 @@ export default function OrderDetailPage() {
       
       try {
         const token = localStorage.getItem('token');
-        
         if (!token) {
           throw new Error('Not authenticated');
         }
         
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
         const response = await fetch(`${API_URL}/orders/${orderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          headers: { Authorization: `Bearer ${token}` }
         });
         
         if (!response.ok) {
@@ -88,18 +84,17 @@ export default function OrderDetailPage() {
     fetchOrderDetails();
   }, [orderId, isAuthenticated, authLoading, router, showToast]);
   
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  // Format date for display
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
   
-  // Get status badge color
+  // Get status badge color based on order status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -117,7 +112,7 @@ export default function OrderDetailPage() {
     }
   };
   
-  // Get tracking UI based on status
+  // Get tracking UI based on order status
   const getTrackingUI = (status: string) => {
     const steps = [
       { name: 'Order Placed', completed: true },
@@ -126,14 +121,15 @@ export default function OrderDetailPage() {
       { name: 'Shipped', completed: ['shipped', 'delivered'].includes(status) },
       { name: 'Delivered', completed: status === 'delivered' }
     ];
-    
     return (
       <div className="flex items-center justify-between w-full mb-8">
         {steps.map((step, index) => (
           <div key={index} className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${
-              step.completed ? 'bg-green-600' : 'bg-gray-700'
-            }`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${
+                step.completed ? 'bg-green-600' : 'bg-gray-700'
+              }`}
+            >
               {step.completed ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -150,7 +146,7 @@ export default function OrderDetailPage() {
       </div>
     );
   };
-  
+
   if (authLoading || (isLoading && isAuthenticated)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
@@ -192,12 +188,11 @@ export default function OrderDetailPage() {
     );
   }
   
-  if (!order) return null; // Extra safety check
+  if (!order) return null; // Safety check
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
       <Navbar />
-      
       <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between">
@@ -231,17 +226,13 @@ export default function OrderDetailPage() {
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
             <h2 className="text-lg font-bold mb-6">Order Status</h2>
             {getTrackingUI(order.status)}
-            
             {order.status === 'shipped' && (
               <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                 </svg>
                 <div>
-                  <div className="flex items-center">
-                    <span className="font-medium text-blue-400">Your order is on the way!</span>
-                  </div>
+                  <span className="font-medium text-blue-400">Your order is on the way!</span>
                   <p className="text-sm text-gray-300">Tracking number: <span className="font-mono">TN{Math.floor(Math.random() * 10000000)}</span></p>
                 </div>
               </div>
@@ -252,7 +243,6 @@ export default function OrderDetailPage() {
         {/* Order Details */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <h2 className="text-lg font-bold mb-4">Order Details</h2>
-          
           <div className="divide-y divide-gray-700">
             {order.items.map((item, index) => (
               <div key={index} className="py-4 flex items-center">
@@ -264,7 +254,6 @@ export default function OrderDetailPage() {
                 <div className="flex-1">
                   <h3 className="font-medium text-lg">{item.name}</h3>
                   <div className="text-gray-400 text-sm">Qty: {item.quantity}</div>
-                  
                   {order.status !== 'pending' && (
                     <div className="mt-2">
                       <button className="text-green-500 hover:text-green-400 text-sm flex items-center">
@@ -282,7 +271,6 @@ export default function OrderDetailPage() {
               </div>
             ))}
           </div>
-          
           <div className="border-t border-gray-700 mt-4 pt-4">
             <div className="flex justify-between py-2">
               <span className="text-gray-400">Subtotal</span>
@@ -310,7 +298,7 @@ export default function OrderDetailPage() {
             <div className="flex items-center mb-4">
               <div className="bg-blue-900/30 w-10 h-6 rounded flex items-center justify-center mr-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v10a3 3 0 003 3h1" />
                 </svg>
               </div>
               <span>{order.paymentInfo?.method || 'Credit Card'}</span>
@@ -321,13 +309,14 @@ export default function OrderDetailPage() {
                 {order.isPaid ? 'Paid' : 'Pending'}
               </p>
             </div>
-            
             {order.shippingAddress && (
               <div className="mt-4">
                 <p className="text-gray-400 text-sm">Billing address</p>
                 <p>{order.shippingAddress.name}</p>
                 <p>{order.shippingAddress.street}</p>
-                <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
+                <p>
+                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                </p>
                 <p>{order.shippingAddress.country}</p>
               </div>
             )}
@@ -336,7 +325,6 @@ export default function OrderDetailPage() {
           {/* Shipping Information */}
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
             <h2 className="text-lg font-bold mb-4">Delivery Information</h2>
-            
             <div className="flex items-center mb-4">
               <div className="bg-green-900/30 w-10 h-6 rounded flex items-center justify-center mr-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -345,20 +333,20 @@ export default function OrderDetailPage() {
               </div>
               <span>Email Delivery</span>
             </div>
-            
             <div>
               <p className="text-gray-400 text-sm">Delivery Status</p>
               <p className={order.isDelivered ? "text-green-500" : "text-yellow-500"}>
                 {order.isDelivered ? 'Delivered' : 'Pending'}
               </p>
             </div>
-            
             {order.shippingAddress && (
               <div className="mt-4">
                 <p className="text-gray-400 text-sm">Shipping address</p>
                 <p>{order.shippingAddress.name}</p>
                 <p>{order.shippingAddress.street}</p>
-                <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
+                <p>
+                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                </p>
                 <p>{order.shippingAddress.country}</p>
               </div>
             )}
@@ -368,7 +356,6 @@ export default function OrderDetailPage() {
         {/* Customer Support */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <h2 className="text-lg font-bold mb-4">Need Help?</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button className="p-4 bg-gray-900/50 rounded-lg hover:bg-gray-900/70 transition flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -393,13 +380,12 @@ export default function OrderDetailPage() {
         
         {/* Actions */}
         <div className="flex justify-between mt-8">
-        <Link
+          <Link
             href="/account?tab=orders"
             className="px-6 py-2 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 transition"
           >
             Back to Orders
           </Link>
-          
           <Link
             href="/"
             className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition"

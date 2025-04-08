@@ -4,18 +4,11 @@ const jwt = require('jsonwebtoken');
 
 // Create nodemailer transport
 const createTransporter = () => {
-  // For development/testing, you can use nodemailer's ethereal email service
-  // to avoid setting up a real email account
+  // In non-production environments, if no email credentials are provided, use a test account.
   if (process.env.NODE_ENV !== 'production') {
     if (!process.env.EMAIL_USER && !process.env.EMAIL_TEST_ACCOUNT) {
-      console.warn('Email credentials not found. Using ethereal email for testing.');
+      // Create an ethereal test account if credentials are missing
       return nodemailer.createTestAccount().then(account => {
-        console.log('Ethereal Email Account:', {
-          user: account.user,
-          pass: account.pass,
-          web: nodemailer.getTestMessageUrl({})
-        });
-        
         return nodemailer.createTransport({
           host: 'smtp.ethereal.email',
           port: 587,
@@ -29,7 +22,7 @@ const createTransporter = () => {
     }
   }
   
-  // Return configured transporter (production or configured development)
+  // Return the configured transporter for production (or if email credentials exist)
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
@@ -44,7 +37,6 @@ const createTransporter = () => {
 // Send verification email
 const sendVerificationEmail = async (user, token) => {
   const transporter = createTransporter();
-  
   const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
   
   const mailOptions = {
@@ -76,7 +68,6 @@ const sendVerificationEmail = async (user, token) => {
 // Send password reset email
 const sendPasswordResetEmail = async (user, token) => {
   const transporter = createTransporter();
-  
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
   
   const mailOptions = {
@@ -106,7 +97,7 @@ const sendPasswordResetEmail = async (user, token) => {
 };
 
 /**
- * Send an order confirmation email to the customer
+ * Send an order confirmation email to the customer.
  */
 const sendOrderConfirmationEmail = async (user, order) => {
   const transporter = createTransporter();
@@ -116,14 +107,13 @@ const sendOrderConfirmationEmail = async (user, order) => {
     <tr>
       <td style="padding: 12px; border-bottom: 1px solid #333;">${item.name}</td>
       <td style="padding: 12px; border-bottom: 1px solid #333; text-align: center;">${item.quantity}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #333; text-align: right;">$${(item.price).toFixed(2)}</td>
+      <td style="padding: 12px; border-bottom: 1px solid #333; text-align: right;">$${item.price.toFixed(2)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #333; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
     </tr>
   `).join('');
   
-  // Format order number to be shorter and more readable
+  // Format order number for readability
   const orderNumber = order._id.toString().slice(-8).toUpperCase();
-  
   // Format date
   const orderDate = new Date(order.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -145,14 +135,11 @@ const sendOrderConfirmationEmail = async (user, order) => {
         <h2 style="color: #22c55e; margin-bottom: 20px;">Order Confirmation</h2>
         <p>Hello ${user.name},</p>
         <p>Thank you for your purchase! We've received your order and it's being processed.</p>
-        
         <div style="background-color: #222; border-radius: 6px; padding: 15px; margin: 20px 0;">
           <p style="margin: 0;"><strong>Order Number:</strong> #${orderNumber}</p>
           <p style="margin: 8px 0 0;"><strong>Date:</strong> ${orderDate}</p>
         </div>
-        
         <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px; margin: 25px 0 15px;">Order Summary</h3>
-        
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <thead>
             <tr style="border-bottom: 2px solid #333;">
@@ -172,13 +159,10 @@ const sendOrderConfirmationEmail = async (user, order) => {
             </tr>
           </tfoot>
         </table>
-        
         <div style="text-align: center; margin: 30px 0;">
           <a href="${orderUrl}" style="background-color: #22c55e; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">View Order Details</a>
         </div>
-        
         <p>If you have any questions about your order, please contact our customer support team.</p>
-        
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 12px; color: #999;">
           <p>© ${new Date().getFullYear()} ShopTech. All rights reserved.</p>
         </div>
@@ -189,7 +173,7 @@ const sendOrderConfirmationEmail = async (user, order) => {
   await transporter.sendMail(mailOptions);
 };
 
-// Export service functions AFTER they are defined
+// Export service functions
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,

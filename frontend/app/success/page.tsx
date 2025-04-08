@@ -88,7 +88,6 @@ export default function SuccessPage() {
   
   // Clear cart on successful order
   useEffect(() => {
-    // For order completion, run this effect only on mount
     if (type === 'order') {
       clearCart();
   
