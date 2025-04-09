@@ -4,11 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '../CartContext';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../AuthContext'; // Make sure to import useAuth
 
 export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart, getCartTotal } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth(); // Add this line to get auth state
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -19,14 +19,16 @@ export default function CartPage() {
     setIsLoading(true);
     
     try {
-      // Format items for Stripe checkout (prices in cents)
+      // Format items for Stripe checkout
       const items = cartItems.map(item => ({
         _id: item._id,
         name: item.name,
-        amount: Math.round(item.price * 100),
+        amount: Math.round(item.price * 100), // Convert to cents for Stripe
         quantity: item.quantity,
         image: item.image || ''
       }));
+      
+      console.log("Preparing checkout with items:", items);
       
       // Get auth token if user is logged in
       const token = localStorage.getItem('token');
@@ -35,10 +37,12 @@ export default function CartPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Add auth token to request if available
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           items,
+          // Pass user ID if authenticated
           userId: isAuthenticated && user ? user._id : undefined
         }),
       });
@@ -60,6 +64,7 @@ export default function CartPage() {
         throw new Error('Invalid response from checkout API');
       }
     } catch (err) {
+      // Fix the error typing issue
       const error = err as Error;
       console.error('Checkout error:', error);
       alert(error.message || 'Failed to process checkout. Please try again.');
@@ -124,10 +129,10 @@ export default function CartPage() {
                         {/* Product Image */}
                         <div className="flex-shrink-0 w-full sm:w-24 h-24 bg-white rounded-lg overflow-hidden mb-4 sm:mb-0 sm:mr-6 flex items-center justify-center">
                           <div className="w-full h-full bg-white flex items-center justify-center">
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="max-h-full max-w-full object-contain"
+                            <img 
+                              src={item.image} 
+                              alt={item.name} 
+                              className="max-h-full max-w-full object-contain" 
                             />
                           </div>
                         </div>
@@ -143,14 +148,14 @@ export default function CartPage() {
                           
                           <div className="mt-4 flex items-center justify-between">
                             <div className="flex items-center">
-                              <button
+                              <button 
                                 onClick={() => updateQuantity(item._id, item.quantity - 1)}
                                 className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white hover:bg-gray-600 transition"
                               >
                                 -
                               </button>
                               <span className="mx-3 w-8 text-center">{item.quantity}</span>
-                              <button
+                              <button 
                                 onClick={() => updateQuantity(item._id, item.quantity + 1)}
                                 className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white hover:bg-gray-600 transition"
                               >
@@ -158,7 +163,7 @@ export default function CartPage() {
                               </button>
                             </div>
                             
-                            <button
+                            <button 
                               onClick={() => removeFromCart(item._id)}
                               className="text-gray-400 hover:text-red-500 transition"
                             >
@@ -175,7 +180,10 @@ export default function CartPage() {
               </div>
               
               <div className="flex justify-between items-center">
-                <Link href="/" className="flex items-center text-green-400 hover:text-green-300 transition">
+                <Link 
+                  href="/"
+                  className="flex items-center text-green-400 hover:text-green-300 transition"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
@@ -188,21 +196,25 @@ export default function CartPage() {
             <div className="lg:w-1/3">
               <div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-700 p-6">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+                
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Subtotal</span>
                     <span>${getCartTotal().toFixed(2)}</span>
                   </div>
+                  
                   <div className="flex justify-between">
                     <span className="text-gray-400">Discount</span>
                     <span className="text-green-400">-$0.00</span>
                   </div>
+                  
                   <div className="border-t border-gray-700 pt-3 flex justify-between">
                     <span className="font-semibold">Total</span>
                     <span className="font-bold text-xl">${getCartTotal().toFixed(2)}</span>
                   </div>
                 </div>
-                <button
+                
+                <button 
                   onClick={handleCheckout}
                   disabled={isLoading || cartItems.length === 0}
                   className={`w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
@@ -219,6 +231,7 @@ export default function CartPage() {
                     'Proceed to Checkout'
                   )}
                 </button>
+                
                 <div className="mt-4 text-xs text-gray-400 text-center">
                   <p>Secure checkout powered by Stripe</p>
                   <p className="mt-1">All transactions are encrypted and secure</p>
