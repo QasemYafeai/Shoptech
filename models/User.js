@@ -1,4 +1,5 @@
-// models/User.js
+// models/User.js - Update the User model with password fix
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -54,11 +55,13 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save middleware to hash the password if modified
+// Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
+  // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) return next();
   
   try {
+    // Hash password with bcrypt
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
@@ -67,9 +70,14 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Method to check if entered password matches stored password
+// Method to check if password matches
 userSchema.methods.matchPassword = async function(enteredPassword) {
-  if (!this.password) return false;  
+  // Safety check to prevent bcrypt errors
+  if (!this.password) {
+    console.log('Password field is undefined for user:', this.email);
+    return false;
+  }
+  
   try {
     return await bcrypt.compare(enteredPassword, this.password);
   } catch (error) {
@@ -78,23 +86,41 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
   }
 };
 
-// Method to create an email verification token
+// Method to create email verification token
 userSchema.methods.createVerificationToken = function() {
+  // Generate random token
   const token = crypto.randomBytes(32).toString('hex');
-  this.verificationToken = crypto.createHash('sha256').update(token).digest('hex');
-  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  
+  // Hash token and store in database
+  this.verificationToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  
+  // Set expiration (24 hours)
+  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+  
   return token;
 };
 
-// Method to create a password reset token
+// Method to create password reset token
 userSchema.methods.createPasswordResetToken = function() {
+  // Generate random token
   const token = crypto.randomBytes(32).toString('hex');
-  this.passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
-  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+  
+  // Hash token and store in database
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  
+  // Set expiration (1 hour)
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000;
+  
   return token;
 };
 
-// Create indexes for efficient query operations
+// Create indexes
 userSchema.index({ email: 1 });
 userSchema.index({ verificationToken: 1, verificationExpires: 1 });
 userSchema.index({ passwordResetToken: 1, passwordResetExpires: 1 });

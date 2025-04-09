@@ -88,6 +88,7 @@ export default function SuccessPage() {
   
   // Clear cart on successful order
   useEffect(() => {
+
     if (type === 'order') {
       clearCart();
   

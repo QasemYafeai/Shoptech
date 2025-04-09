@@ -1,7 +1,16 @@
 // app/products/[id]/page.tsx (Server Component)
-
 import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
+
+// Define proper types for Next.js Pages
+interface ProductPageParams {
+  id: string;
+}
+
+interface ProductPageProps {
+  params: ProductPageParams;
+  searchParams?: Record<string, string | string[] | undefined>;
+}
 
 interface Product {
   _id: string;
@@ -14,7 +23,9 @@ interface Product {
 // Fetch a single product by ID from your Express backend
 async function getProductById(id: string): Promise<Product | null> {
   try {
-    const res = await fetch(`http://localhost:3001/api/products/${id}`, {
+    // Update this to use env variable for API URL in production
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const res = await fetch(`${apiUrl}/products/${id}`, {
       cache: 'no-store',
     });
     
@@ -26,11 +37,7 @@ async function getProductById(id: string): Promise<Product | null> {
   }
 }
 
-export default async function ProductDetailPage({ 
-  params 
-}: { 
-  params: { id: string } 
-}) {
+export default async function ProductDetailPage({ params }: ProductPageProps) {
   // Make sure params is properly awaited and validated
   if (!params || !params.id) {
     notFound();

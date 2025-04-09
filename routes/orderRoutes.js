@@ -3,8 +3,9 @@ const router = express.Router();
 const Order = require('../models/Order'); 
 const { protect, isAdmin } = require('../middleware/authMiddleware');
 
-// GET /api/orders - Get all orders for the logged-in user
-// Access: Private
+// @route GET /api/orders
+// @desc Get all orders for the logged-in user
+// @access Private
 router.get('/', protect, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -27,6 +28,7 @@ router.get('/', protect, async (req, res) => {
       data: orders
     });
   } catch (error) {
+    console.error('Get orders error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error fetching orders'
@@ -34,8 +36,9 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
-// GET /api/orders/:id - Get order by ID
-// Access: Private
+// @route GET /api/orders/:id
+// @desc Get order by ID
+// @access Private
 router.get('/:id', protect, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -47,7 +50,6 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
     
-    // Only admin or the owner of the order can access it.
     if (req.user.role !== 'admin' && 
         order.user && 
         order.user.toString() !== req.user._id.toString()) {
@@ -62,6 +64,7 @@ router.get('/:id', protect, async (req, res) => {
       data: order
     });
   } catch (error) {
+    console.error('Get order error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error fetching order'
@@ -69,8 +72,9 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// PUT /api/orders/:id/cancel - Cancel an order
-// Access: Private
+// @route PUT /api/orders/:id/cancel
+// @desc Cancel an order
+// @access Private
 router.put('/:id/cancel', protect, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -82,7 +86,6 @@ router.put('/:id/cancel', protect, async (req, res) => {
       });
     }
     
-    // Only allow cancel if the requester is the owner (or admin)
     if (req.user.role !== 'admin' && 
         order.user && 
         order.user.toString() !== req.user._id.toString()) {
@@ -92,7 +95,6 @@ router.put('/:id/cancel', protect, async (req, res) => {
       });
     }
     
-    // Cancel only if order status is 'pending' or 'processing'
     if (order.status !== 'pending' && order.status !== 'processing') {
       return res.status(400).json({
         success: false,
@@ -109,6 +111,7 @@ router.put('/:id/cancel', protect, async (req, res) => {
       data: order
     });
   } catch (error) {
+    console.error('Cancel order error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error cancelling order'
@@ -116,8 +119,9 @@ router.put('/:id/cancel', protect, async (req, res) => {
   }
 });
 
-// GET /api/orders/admin/all - Get all orders (admin only)
-// Access: Private/Admin
+// @route GET /api/orders/admin/all
+// @desc Get all orders (admin only)
+// @access Private/Admin
 router.get('/admin/all', protect, isAdmin, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -141,6 +145,7 @@ router.get('/admin/all', protect, isAdmin, async (req, res) => {
       data: orders
     });
   } catch (error) {
+    console.error('Admin get orders error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error fetching orders'
@@ -148,11 +153,13 @@ router.get('/admin/all', protect, isAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/orders/admin/:id - Update order status (admin only)
-// Access: Private/Admin
+// @route PUT /api/orders/admin/:id
+// @desc Update order status (admin only)
+// @access Private/Admin
 router.put('/admin/:id', protect, isAdmin, async (req, res) => {
   try {
     const { status } = req.body;
+    
     if (!status) {
       return res.status(400).json({
         success: false,
@@ -161,6 +168,7 @@ router.put('/admin/:id', protect, isAdmin, async (req, res) => {
     }
     
     const order = await Order.findById(req.params.id);
+    
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -169,6 +177,7 @@ router.put('/admin/:id', protect, isAdmin, async (req, res) => {
     }
     
     order.status = status;
+    
     if (status === 'delivered') {
       order.isDelivered = true;
       order.deliveredAt = Date.now();
@@ -182,6 +191,7 @@ router.put('/admin/:id', protect, isAdmin, async (req, res) => {
       data: order
     });
   } catch (error) {
+    console.error('Admin update order error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error updating order'

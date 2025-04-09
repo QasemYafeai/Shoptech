@@ -9,30 +9,36 @@ const emailService = require('../utils/emailService');
 const protect = async (req, res, next) => {
   try {
     let token;
+    
     // Check for token in Authorization header
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies.jwt) { // Check for token in cookies
+    } 
+    // Check for token in cookies
+    else if (req.cookies.jwt) {
       token = req.cookies.jwt;
     }
-
+    
     if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Not authorized, no token provided'
       });
     }
-
+    
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Get user from token (excluding password)
+    
+    // Get user from token
     const user = await User.findById(decoded.id).select('-password');
+    
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'User not found'
       });
     }
+    
     req.user = user;
     next();
   } catch (error) {
@@ -57,6 +63,7 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -65,25 +72,38 @@ router.post('/register', async (req, res) => {
         message: 'Email already registered'
       });
     }
+    
     // Create new user
-    const user = await User.create({ name, email, password });
+    const user = await User.create({
+      name,
+      email,
+      password
+    });
+    
     // Generate verification token
     const verificationToken = user.createVerificationToken();
     await user.save({ validateBeforeSave: false });
+    
     // Send verification email
     try {
       await emailService.sendVerificationEmail(user, verificationToken);
+      
       res.status(201).json({
         success: true,
         message: 'User registered. Please check your email to verify your account.'
       });
     } catch (error) {
       console.error('Email sending error:', error);
+      
+      // Instead of removing the verification token, keep it
+      // so the user can request a new verification email later
+      
+      // Still return success since the account was created
       return res.status(201).json({
         success: true,
         message: 'Account created, but we couldn\'t send the verification email. Please try again later or contact support.',
         emailError: true,
-        userId: user._id 
+        userId: user._id // Include user ID for potential debugging
       });
     }
   } catch (error) {
@@ -101,6 +121,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
     // Check if user exists
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
@@ -110,8 +131,9 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Check if password field is available
+   
     if (!user.password) {
+      console.log('User found but password field is undefined:', user.email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -126,8 +148,9 @@ router.post('/login', async (req, res) => {
         message: 'Invalid email or password'
       });
     }
-
+    // Generate token
     const token = generateToken(user._id);
+    
     // Set JWT as HTTP-Only cookie
     res.cookie('jwt', token, {
       httpOnly: true,
@@ -160,14 +183,20 @@ router.post('/login', async (req, res) => {
 router.post('/verify-email', async (req, res) => {
   try {
     const { token } = req.body;
+    
     if (!token) {
       return res.status(400).json({
         success: false,
         message: 'No verification token provided'
       });
     }
+    
     // Hash the token
-    const verificationToken = crypto.createHash('sha256').update(token).digest('hex');
+    const verificationToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    
     // Find user by verification token
     const user = await User.findOne({
       verificationToken,
@@ -181,6 +210,7 @@ router.post('/verify-email', async (req, res) => {
       });
     }
     
+    // Update user
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationExpires = undefined;
@@ -188,6 +218,7 @@ router.post('/verify-email', async (req, res) => {
     
     // Generate token for auto-login
     const jwtToken = generateToken(user._id);
+    
     // Set JWT as HTTP-Only cookie
     res.cookie('jwt', jwtToken, {
       httpOnly: true,
@@ -221,13 +252,17 @@ router.post('/verify-email', async (req, res) => {
 router.post('/resend-verification', async (req, res) => {
   try {
     const { email } = req.body;
+    
+    // Find user by email
     const user = await User.findOne({ email });
+    
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
+    
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
@@ -235,20 +270,25 @@ router.post('/resend-verification', async (req, res) => {
       });
     }
     
+    // Generate new verification token
     const verificationToken = user.createVerificationToken();
     await user.save({ validateBeforeSave: false });
     
+    // Send verification email
     try {
       await emailService.sendVerificationEmail(user, verificationToken);
+      
       res.status(200).json({
         success: true,
         message: 'Verification email sent'
       });
     } catch (error) {
       console.error('Email sending error:', error);
+      
       user.verificationToken = undefined;
       user.verificationExpires = undefined;
       await user.save({ validateBeforeSave: false });
+      
       return res.status(500).json({
         success: false,
         message: 'Failed to send verification email'
@@ -269,7 +309,10 @@ router.post('/resend-verification', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
+    
+    // Find user by email
     const user = await User.findOne({ email });
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -277,20 +320,25 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
     
+    // Generate reset token
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
     
+    // Send reset email
     try {
       await emailService.sendPasswordResetEmail(user, resetToken);
+      
       res.status(200).json({
         success: true,
         message: 'Password reset email sent'
       });
     } catch (error) {
       console.error('Email sending error:', error);
+      
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
+      
       return res.status(500).json({
         success: false,
         message: 'Failed to send password reset email'
@@ -311,6 +359,7 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
+    
     if (!token || !password) {
       return res.status(400).json({
         success: false,
@@ -318,7 +367,13 @@ router.post('/reset-password', async (req, res) => {
       });
     }
     
-    const passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
+    // Hash the token
+    const passwordResetToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    
+    // Find user by reset token
     const user = await User.findOne({
       passwordResetToken,
       passwordResetExpires: { $gt: Date.now() }
@@ -331,12 +386,16 @@ router.post('/reset-password', async (req, res) => {
       });
     }
     
+    // Update password
     user.password = password;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
     
+    // Generate token for auto-login
     const jwtToken = generateToken(user._id);
+    
+    // Set JWT as HTTP-Only cookie
     res.cookie('jwt', jwtToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -384,12 +443,14 @@ router.get('/logout', (req, res) => {
 router.get('/profile', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
+    
     res.status(200).json({
       success: true,
       user: {
@@ -415,18 +476,23 @@ router.get('/profile', protect, async (req, res) => {
 router.put('/profile', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
+    
     // Update basic info
     if (req.body.name) user.name = req.body.name;
     
     // Update address if provided
     if (req.body.address) {
-      user.address = { ...user.address, ...req.body.address };
+      user.address = {
+        ...user.address,
+        ...req.body.address
+      };
     }
     
     // Update password if provided
@@ -448,13 +514,18 @@ router.put('/profile', protect, async (req, res) => {
       user.email = req.body.email;
       user.isVerified = false;
       
-      // Generate verification token and send verification email
+      // Generate verification token
       const verificationToken = user.createVerificationToken();
+      
+      // Save user with new email and verification token
       await user.save();
+      
+      // Send verification email
       try {
         await emailService.sendVerificationEmail(user, verificationToken);
       } catch (error) {
         console.error('Email sending error:', error);
+        // Continue with update even if email fails
       }
       
       return res.status(200).json({
@@ -463,7 +534,9 @@ router.put('/profile', protect, async (req, res) => {
       });
     }
     
+    // Save user without email change
     await user.save();
+    
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
